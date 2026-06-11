@@ -1,0 +1,13 @@
+aws_region          = "ap-southeast-1"
+project_name        = "devops-lab-iac"
+instance_type       = "t3.micro"
+ssh_public_key_path = "~/.ssh/aws-devops-lab.pub"
+
+vpc_cidr            = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.1.0/24"
+private_subnet_cidr = "10.0.2.0/24"
+
+# Ganti dengan IP publik kamu.
+# Cek dari laptop:
+# curl ifconfig.me
+allowed_ssh_cidr = "118.137.163.5/32"

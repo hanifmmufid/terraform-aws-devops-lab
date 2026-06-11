@@ -1,28 +1,56 @@
 # Terraform AWS DevOps Lab
 
-Terraform project untuk membuat EC2 DevOps Lab di AWS.
+Terraform project untuk belajar Infrastructure as Code di AWS.
 
-## Resources
+## Structure
 
-- EC2 Ubuntu
-- Security Group
-- SSH Key Pair
+```text
+modules/
+├── vpc/
+├── security-group/
+└── ec2/
 
-## Usage
+envs/
+└── dev/
+Modules
+vpc
 
-```bash
+Membuat:
+
+VPC
+Public subnet
+Private subnet
+Internet Gateway
+Public route table
+Private route table
+security-group
+
+Membuat:
+
+Public security group
+Private security group
+ec2
+
+Membuat:
+
+Public EC2
+Private EC2
+Dev Environment
+
+Masuk ke folder:
+
+cd envs/dev
+
+Jalankan:
+
 terraform init
-terraform fmt
+terraform fmt -recursive
 terraform validate
 terraform plan
 terraform apply
 SSH
-
-Setelah apply:
-
-terraform output ssh_command
-Destroy
-terraform destroy
+terraform output -raw ssh_public_command
+terraform output -raw ssh_private_via_bastion_command
 Notes
 
 Jangan commit:
@@ -30,36 +58,3 @@ Jangan commit:
 terraform.tfvars
 terraform.tfstate
 .terraform/
-
----
-
-# 33.13 Format dan Validasi Terraform
-
-## Custom VPC Architecture
-
-```text
-VPC 10.0.0.0/16
-│
-├── Public Subnet 10.0.1.0/24
-│   └── EC2 Ubuntu
-│
-├── Internet Gateway
-│
-└── Public Route Table
-    └── 0.0.0.0/0 → Internet Gateway
-Resources
-aws_vpc
-aws_subnet
-aws_internet_gateway
-aws_route_table
-aws_route_table_association
-aws_security_group
-aws_key_pair
-aws_instance
-
-Commit:
-
-```bash id="i2yo54"
-git add .
-git commit -m "Add custom VPC Terraform architecture"
-git push -u origin custom-vpc
