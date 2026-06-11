@@ -13,15 +13,8 @@ provider "aws" {
   region = var.aws_region
 }
 
-data "aws_vpc" "default" {
-  default = true
-}
-
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
+data "aws_availability_zones" "available" {
+  state = "available"
 }
 
 data "aws_ami" "ubuntu" {
@@ -41,6 +34,58 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name    = "${var.project_name}-vpc"
+    Project = var.project_name
+  }
+}
+
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
+
+  tags = {
+    Name    = "${var.project_name}-igw"
+    Project = var.project_name
+  }
+}
+
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name    = "${var.project_name}-public-subnet"
+    Project = var.project_name
+    Tier    = "public"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  tags = {
+    Name    = "${var.project_name}-public-rt"
+    Project = var.project_name
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
 resource "aws_key_pair" "this" {
   key_name   = "${var.project_name}-key"
   public_key = file(pathexpand(var.ssh_public_key_path))
@@ -54,7 +99,7 @@ resource "aws_key_pair" "this" {
 resource "aws_security_group" "this" {
   name        = "${var.project_name}-sg"
   description = "Security group for DevOps lab"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.this.id
 
   ingress {
     description = "SSH from allowed IP"
@@ -80,14 +125,6 @@ resource "aws_security_group" "this" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    description = "App port temporary"
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     description = "Allow all outbound"
     from_port   = 0
@@ -105,7 +142,7 @@ resource "aws_security_group" "this" {
 resource "aws_instance" "this" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
-  subnet_id                   = data.aws_subnets.default.ids[0]
+  subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.this.id]
   key_name                    = aws_key_pair.this.key_name
   associate_public_ip_address = true
