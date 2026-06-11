@@ -67,6 +67,19 @@ resource "aws_subnet" "public" {
   }
 }
 
+resource "aws_subnet" "private" {
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = var.private_subnet_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name    = "${var.project_name}-private-subnet"
+    Project = var.project_name
+    Tier    = "private"
+  }
+}
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
@@ -86,6 +99,20 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+
+  tags = {
+    Name    = "${var.project_name}-private-rt"
+    Project = var.project_name
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private.id
+}
+
 resource "aws_key_pair" "this" {
   key_name   = "${var.project_name}-key"
   public_key = file(pathexpand(var.ssh_public_key_path))
@@ -96,8 +123,8 @@ resource "aws_key_pair" "this" {
   }
 }
 
-resource "aws_security_group" "this" {
-  name        = "${var.project_name}-sg"
+resource "aws_security_group" "public" {
+  name        = "${var.project_name}-public-sg"
   description = "Security group for DevOps lab"
   vpc_id      = aws_vpc.this.id
 
@@ -139,11 +166,39 @@ resource "aws_security_group" "this" {
   }
 }
 
-resource "aws_instance" "this" {
+resource "aws_security_group" "private" {
+  name        = "${var.project_name}-private-sg"
+  description = "Security group for private EC2"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description     = "SSH from public bastion security group"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.public.id]
+  }
+
+  egress {
+    description = "Allow all outbound within VPC"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = {
+    Name    = "${var.project_name}-private-sg"
+    Project = var.project_name
+    Tier    = "private"
+  }
+}
+
+resource "aws_instance" "public" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.public.id
-  vpc_security_group_ids      = [aws_security_group.this.id]
+  vpc_security_group_ids      = [aws_security_group.public.id]
   key_name                    = aws_key_pair.this.key_name
   associate_public_ip_address = true
 
@@ -153,7 +208,27 @@ resource "aws_instance" "this" {
   }
 
   tags = {
-    Name    = "${var.project_name}-ec2"
+    Name    = "${var.project_name}-public-ec2"
     Project = var.project_name
+  }
+}
+
+resource "aws_instance" "private" {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.private.id
+  vpc_security_group_ids      = [aws_security_group.private.id]
+  key_name                    = aws_key_pair.this.key_name
+  associate_public_ip_address = false
+
+  root_block_device {
+    volume_size = 10
+    volume_type = "gp3"
+  }
+
+  tags = {
+    Name    = "${var.project_name}-private-ec2"
+    Project = var.project_name
+    Tier    = "private"
   }
 }
