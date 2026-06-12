@@ -50,3 +50,9 @@ variable "root_volume_size" {
   type        = number
   default     = 10
 }
+
+variable "ssh_public_key_content" {
+  description = "Isi public key SSH. Dipakai CI agar tidak perlu file lokal."
+  type        = string
+  default     = null
+}
