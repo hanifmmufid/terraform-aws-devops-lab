@@ -4,8 +4,9 @@ resource "aws_vpc" "this" {
   enable_dns_support   = true
 
   tags = {
-    Name    = "${var.project_name}-vpc"
-    Project = var.project_name
+    Name      = "${var.project_name}-vpc"
+    Project   = var.project_name
+    ManagedBy = "Terraform"
   }
 }
 
