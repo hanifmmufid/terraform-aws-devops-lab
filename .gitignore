@@ -2,6 +2,7 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+!envs/dev/ci.tfvars
 crash.log
 crash.*.log
 override.tf
