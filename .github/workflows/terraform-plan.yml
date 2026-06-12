@@ -54,5 +54,12 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
+      - name: Create runtime tfvars
+        run: |
+          cat > runtime.tfvars <<EOF
+          allowed_ssh_cidr = "${{ secrets.TF_VAR_ALLOWED_SSH_CIDR }}"
+          ssh_public_key_content = "${{ secrets.SSH_PUBLIC_KEY_CONTENT }}"
+          EOF
+
       - name: Terraform plan
         run: terraform plan -input=false -var-file=ci.tfvars
